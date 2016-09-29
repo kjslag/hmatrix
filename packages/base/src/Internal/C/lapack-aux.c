@@ -211,6 +211,123 @@ int svd_l_Rdd(ODMAT(a),ODMAT(u), DVEC(s),ODMAT(v)) {
     OK
 }
 
+int dgesvdx_(char *jobu, char *jobvt, char *range,
+	integer *m, integer *n, doublereal *a, integer *lda,
+	doublereal *vl, doublereal *vu, integer *il, integer *iu, integer *ns,
+	doublereal *s,
+	doublereal *u, integer *ldu,
+	doublereal *vt, integer *ldvt,
+	doublereal *work, integer *lwork,
+	integer *iwork,
+	integer *info);
+
+int svd_l_Rx(integer nSV, ODMAT(a),ODMAT(u), DVEC(s),ODMAT(v)) {
+    integer m = ar;
+    integer n = ac;
+    integer q = MIN(m,n);
+    char* jobu   = "V";
+    char* jobvt  = "V";
+    char* range  = "I";
+    doublereal vl, vu;
+    REQUIRES(1<=nSV && nSV<=q,BAD_SIZE);
+    integer il = 1;
+    integer iu = nSV;
+    integer ns;
+    integer ldvt = iu - il + 1;
+    DEBUGMSG("svd_l_Rx");
+    integer* iwork = (integer*) malloc(12*q*sizeof(integer));
+    CHECK(!iwork,MEM);
+    integer lwork = -1;
+    integer res;
+    // ask for optimal lwork
+    double ans;
+    dgesvdx_ (jobu,jobvt,range,
+              &m,&n,ap,&m,
+              &vl,&vu,&il,&iu,&ns,
+              sp,
+              up,&m,
+              vp,&ldvt,
+              &ans, &lwork,
+              iwork,
+              &res);
+    lwork = ceil(ans);
+    double * work = (double*)malloc(lwork*sizeof(double));
+    CHECK(!work,MEM);
+    dgesvdx_ (jobu,jobvt,range,
+              &m,&n,ap,&m,
+              &vl,&vu,&il,&iu,&ns,
+              sp,
+              up,&m,
+              vp,&ldvt,
+              work, &lwork,
+              iwork,
+              &res);
+    CHECK(res,res);
+    free(work);
+    free(iwork);
+    OK
+}
+
+int zgesvdx_(char *jobu, char *jobvt, char *range,
+	integer *m, integer *n, doublecomplex *a, integer *lda,
+	doublereal *vl, doublereal *vu, integer *il, integer *iu, integer *ns,
+	doublereal *s,
+	doublecomplex *u, integer *ldu,
+	doublecomplex *vt, integer *ldvt,
+	doublecomplex *work, integer *lwork,
+	doublereal *rwork, integer *iwork,
+	integer *info);
+
+int svd_l_Cx(integer nSV, OCMAT(a),OCMAT(u), DVEC(s),OCMAT(v)) {
+    integer m = ar;
+    integer n = ac;
+    integer q = MIN(m,n);
+    char* jobu   = "V";
+    char* jobvt  = "V";
+    char* range  = "I";
+    doublereal vl, vu;
+    REQUIRES(1<=nSV && nSV<=q,BAD_SIZE);
+    integer il = 1;
+    integer iu = nSV;
+    integer ns;
+    integer ldvt = iu - il + 1;
+    DEBUGMSG("svd_l_Cx");
+    double *rwork = (double*) malloc(MAX(1,17*q*q)*sizeof(double));
+    CHECK(!rwork,MEM);
+    integer* iwork = (integer*) malloc(12*q*sizeof(integer));
+    CHECK(!iwork,MEM);
+    integer lwork = -1;
+    integer res;
+    // ask for optimal lwork
+    doublecomplex ans;
+    zgesvdx_ (jobu,jobvt,range,
+              &m,&n,ap,&m,
+              &vl,&vu,&il,&iu,&ns,
+              sp,
+              up,&m,
+              vp,&ldvt,
+              &ans, &lwork,
+              rwork,iwork,
+              &res);
+    lwork = ceil(ans.r);
+    doublecomplex * work = (doublecomplex*)malloc(lwork*sizeof(doublecomplex));
+    CHECK(!work,MEM);
+    zgesvdx_ (jobu,jobvt,range,
+              &m,&n,ap,&m,
+              &vl,&vu,&il,&iu,&ns,
+              sp,
+              up,&m,
+              vp,&ldvt,
+              work, &lwork,
+              rwork,iwork,
+              &res);
+    CHECK(res,res);
+    free(work);
+    free(rwork);
+    free(iwork);
+    OK
+}
+
 //////////////////// complex svd ////////////////////////////////////
 
 int zgesvd_(char *jobu, char *jobvt, integer *m, integer *n,

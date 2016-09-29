@@ -99,6 +99,8 @@ foreign import ccall unsafe "svd_l_R" dgesvd :: TSVD R
 foreign import ccall unsafe "svd_l_C" zgesvd :: TSVD C
 foreign import ccall unsafe "svd_l_Rdd" dgesdd :: TSVD R
 foreign import ccall unsafe "svd_l_Cdd" zgesdd :: TSVD C
+foreign import ccall unsafe "svd_l_Rx" dgesvdx :: CInt -> TSVD R
+foreign import ccall unsafe "svd_l_Cx" zgesvdx :: CInt -> TSVD C
 
 -- | Full SVD of a real matrix using LAPACK's /dgesvd/.
 svdR :: Matrix Double -> (Matrix Double, Vector Double, Matrix Double)
@@ -155,6 +157,27 @@ thinSVDAux f st x = unsafePerformIO $ do
     r = rows x
     c = cols x
     q = min r c
+
+
+-- | Truncated SVD of a real matrix, using LAPACK's /dgesvdx/ with jobu == jobvt == \'V\' and range == \'I\'.
+truncatedSVDR :: Int -> Matrix Double -> (Matrix Double, Vector Double, Matrix Double)
+truncatedSVDR = truncatedSVDAux dgesvdx "truncatedSVDR"
+
+-- | Truncated SVD of a complex matrix, using LAPACK's /zgesvdx/ with jobu == jobvt == \'V\' and range == \'I\'.
+truncatedSVDC :: Int -> Matrix (Complex Double) -> (Matrix (Complex Double), Vector Double, Matrix (Complex Double))
+truncatedSVDC = truncatedSVDAux zgesvdx "truncatedSVDC"
+
+truncatedSVDAux f st nSV x = unsafePerformIO $ do
+    a <- copy ColumnMajor x
+    u <- createMatrix ColumnMajor r q'
+    s <- createVector q'
+    v <- createMatrix ColumnMajor q' c
+    f (fromIntegral q') # a # u # s # v #| st
+    return (u,s,v)
+  where
+    r = rows x
+    c = cols x
+    q' = min nSV $ min r c
 
 
 -- | Singular values of a real matrix, using LAPACK's /dgesvd/ with jobu == jobvt == \'N\'.

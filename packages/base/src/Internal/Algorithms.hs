@@ -51,6 +51,7 @@ class (Numeric t,
        RealOf t ~ Double) => Field t where
     svd'         :: Matrix t -> (Matrix t, Vector Double, Matrix t)
     thinSVD'     :: Matrix t -> (Matrix t, Vector Double, Matrix t)
+    truncatedSVD' :: Int -> Matrix t -> (Matrix t, Vector Double, Matrix t)
     sv'          :: Matrix t -> Vector Double
     luPacked'    :: Matrix t -> (Matrix t, [Int])
     luSolve'     :: (Matrix t, [Int]) -> Matrix t -> Matrix t
@@ -76,6 +77,7 @@ class (Numeric t,
 instance Field Double where
     svd' = svdRd
     thinSVD' = thinSVDRd
+    truncatedSVD' = truncatedSVDR
     sv' = svR
     luPacked' = luR
     luSolve' (l_u,perm) = lusR l_u perm
@@ -105,6 +107,7 @@ instance Field (Complex Double) where
     svd' = svdCd
     thinSVD' = thinSVDCd
 #endif
+    truncatedSVD' = truncatedSVDC
     sv' = svC
     luPacked' = luC
     luSolve' (l_u,perm) = lusC l_u perm
@@ -291,11 +294,19 @@ fromList [35.18264833189422,1.4769076999800903]
 
 -}
 compactSVD :: Field t  => Matrix t -> (Matrix t, Vector Double, Matrix t)
-compactSVD m = (u', subVector 0 d s, v') where
-    (u,s,v) = thinSVD m
+compactSVD m = compactifySVD m $ thinSVD m
+
+compactifySVD :: Field t  => Matrix t -> (Matrix t, Vector Double, Matrix t) -> (Matrix t, Vector Double, Matrix t)
+compactifySVD m (u,s,v) = (u', subVector 0 d s, v') where
     d = rankSVD (1*eps) m s `max` 1
     u' = takeColumns d u
     v' = takeColumns d v
+
+-- | Similar to 'compactSVD', but only calculates (at most) the largest n nonzero singular values and corresponding singular vectors. This can be significantly faster than 'compactSVD' if n is small.
+truncatedSVD :: Field t => Int -> Matrix t -> (Matrix t, Vector Double, Matrix t)
+truncatedSVD n m = {-# SCC "truncatedSVD" #-} compactifySVD m $ g $ truncatedSVD' n m
+  where
+    g (u,s,v) = (u,s,tr v)
 
 
 -- | Singular values and all right singular vectors (as columns).
